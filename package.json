@@ -39,7 +39,8 @@
     "benchmark:sign": "cd benchmarks && node sign.js",
     "benchmark:decode": "cd benchmarks && node decode.js",
     "benchmark:verify": "cd benchmarks && node verify.js",
-    "benchmark:auth0": "cd benchmarks && node auth0.js"
+    "benchmark:auth0": "cd benchmarks && node auth0.js",
+    "benchmark:workers": "cd benchmarks && node workers.js"
   },
   "dependencies": {
     "ecdsa-sig-formatter": "^1.0.11"

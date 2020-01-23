@@ -29,7 +29,16 @@ TokenError.codes = {
   missingSecret: 'FAST_JWT_MISSING_SECRET',
   secretFetchingError: 'FAST_JWT_SECRET_FETCHING_ERROR',
   signError: 'FAST_JWT_SECRET_SIGN_ERROR',
-  verifyError: 'FAST_JWT_SECRET_VERIFY_ERROR'
+  verifyError: 'FAST_JWT_SECRET_VERIFY_ERROR',
+  workerError: 'FAST_JWT_SECRET_WORKER_ERROR'
+}
+
+TokenError.wrap = function(originalError, code, message) {
+  if (originalError instanceof TokenError) {
+    return originalError
+  }
+
+  return new TokenError(code, message, { originalError })
 }
 
 module.exports = TokenError

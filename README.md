@@ -25,6 +25,7 @@ Create a signer function by calling `createSigner` and providing one or more of 
 - `secret`: A string, buffer or object containing the secret for `HS*` algorithms or the PEM encoded public key for `RS*`, `PS*` and `ES*` algorithms (whose format is defined by the Node's crypto module documentation). The secret can also be a function accepting a Node style callback or a function returning a promise. This is the only mandatory option.
 - `algorithm`: The algorithm to use to sign the token, default is `HS256`.
 - `encoding`: The token encoding, default is `utf-8`.
+- `useWorkers`: Use worker_threads for cryptographic operations. On Node version below 11.7.0, this needs the process to be started with node flag `--experimental-workers` flag.
 - `mutatePayload`: If the original payload must be modified in place (via `Object.assign`) and thus will result changed to the caller funciton.
 - `expiresIn`: Time span (in milliseconds) after which the token expires, added as the `exp` claim in the payload. This will override any existing value in the claim.
 - `notBefore`: Time span (in milliseconds) before the token is active, added as the `nbf` claim in the payload. This will override any existing value in the claim.
@@ -42,7 +43,7 @@ The signer is a function which accepts a payload and returns the token.
 
 The payload must be a object, a buffer or a string. If not a object, all the options of the signer which modify the the payload will be ignored. If `iat` claim is already present, it won't be overwritten with the current timestamp.
 
-If the `secret` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
+If the `secret` option is a function or `useWorkers` is `true`, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
 #### Example
 
@@ -113,6 +114,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 - `algorithms`: List of strings with the names of the allowed algorithms. By default, all algorithms are accepted.
 - `complete`: Return an object with the decoded header, payload, signature and input (the token part before the signature), instead of just the content of the payload. Default is `false`.
 - `encoding`: The token encoding. Default is `utf-8`.
+- `useWorkers`: Use worker_threads for cryptographic operations. On Node version below 11.7.0, this needs the process to be started with node flag `--experimental-workers` flag.
 - `allowedJti`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the id claim (`jti`). By default, all values are accepted.
 - `allowedAud`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the audience claim (`aud`). By default, all values are accepted.
 - `allowedIss`: A string, a regular expression, an array of strings or an array of regular expressions containing allowed values for the issuer claim (`iss`). By default, all values are accepted.
@@ -126,7 +128,7 @@ Create a verifier function by calling `createVerifier` and providing one or more
 
 The verifier is a function which accepts a token (as Buffer or string) and returns the payload or the sections of the token.
 
-If the `secret` option is a function, the signer will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
+If the `secret` option is a function or `useWorkers` is `true`, the verifier will also accept a Node style callback and will return a promise, supporting therefore both callback and async/await styles.
 
 #### Examples
 

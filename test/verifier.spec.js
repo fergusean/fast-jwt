@@ -93,8 +93,7 @@ test('it correctly verifies a token - async - secret as promise', async t => {
 test('it correctly verifies a token - async - static secret', async t => {
   t.strictDeepEqual(
     await verify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM', {
-      noTimestamp: true,
-      useWorkers: true
+      noTimestamp: true
     }),
     { a: 1 }
   )
@@ -102,8 +101,8 @@ test('it correctly verifies a token - async - static secret', async t => {
 
 test('it correctly verifies a token - callback - secret as promise', t => {
   verify(
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XDhIexBqPC-F1toZReYZLWb_YRU5tv0sxM',
-    { secret: async () => 'secret', noTimestamp: true },
+    'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhIjoxfQ.',
+    { secret: async () => null, noTimestamp: true },
     (error, payload) => {
       t.type(error, 'null')
       t.strictDeepEqual(payload, { a: 1 })

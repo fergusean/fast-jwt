@@ -1,6 +1,8 @@
 'use strict'
 
 const { publicKeyAlgorithms, rsaKeyAlgorithms, hashAlgorithms, createSignature } = require('./crypto')
+const { supportsWorkers, createSignatureWithWorker } = require('./workers')
+
 const TokenError = require('./error')
 const { base64UrlEncode, getAsyncSecret, ensurePromiseCallback } = require('./utils')
 
@@ -9,10 +11,11 @@ const supportedAlgorithms = Array.from(
 ).join(', ')
 
 module.exports = function createSigner(options) {
-  const {
+  let {
     secret,
     algorithm,
     encoding,
+    useWorkers,
     noTimestamp,
     mutatePayload,
     clockTimestamp,
@@ -107,9 +110,12 @@ module.exports = function createSigner(options) {
     nonce
   }
 
+  // Workers support
+  useWorkers = useWorkers && supportsWorkers
+
   // Return the signer
   return function sign(payload, cb) {
-    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
+    const [callback, promise] = typeof secret === 'function' || useWorkers ? ensurePromiseCallback(cb) : []
 
     // Prepare header and payload
     // Prepare the header
@@ -165,11 +171,19 @@ module.exports = function createSigner(options) {
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
-        return callback(
-          err instanceof TokenError
-            ? err
-            : new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
-        )
+        return callback(TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.'))
+      }
+
+      if (useWorkers) {
+        createSignatureWithWorker(algorithm, currentSecret, encodedHeader, encodedPayload, (err, encodedSignature) => {
+          if (err) {
+            return callback(err, TokenError.codes.workerError, 'Worker signing failed.')
+          }
+
+          callback(null, `${encodedHeader}.${encodedPayload}.${base64UrlEncode(encodedSignature)}`)
+        })
+
+        return
       }
 
       let token

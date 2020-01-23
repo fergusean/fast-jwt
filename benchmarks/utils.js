@@ -225,4 +225,4 @@ function compareVerifying(token, algorithm, publicKey) {
   return promise
 }
 
-module.exports = { compareSigning, compareDecoding, compareVerifying, saveLogs }
+module.exports = { log, compareSigning, compareDecoding, compareVerifying, saveLogs }

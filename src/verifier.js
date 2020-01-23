@@ -4,6 +4,7 @@ const { getSupportedAlgorithms, verifySignature } = require('./crypto')
 const createDecoder = require('./decoder')
 const TokenError = require('./error')
 const { getAsyncSecret, ensurePromiseCallback } = require('./utils')
+const { supportsWorkers, verifySignatureWithWorker } = require('./workers')
 
 function ensureStringClaimMatcher(raw) {
   if (!Array.isArray(raw)) {
@@ -13,7 +14,7 @@ function ensureStringClaimMatcher(raw) {
   return raw.map(r => (r && typeof r.test === 'function' ? r : new RegExp(r.toString())))
 }
 
-function verifyToken(
+function verifyPayload(
   secret,
   input,
   header,
@@ -39,11 +40,6 @@ function verifyToken(
   // Verify the token is allowed
   if (!algorithms.includes(header.alg)) {
     throw new TokenError(TokenError.codes.invalidAlgorithm, 'The token algorithm is invalid.')
-  }
-
-  // Verify the signature, if present
-  if (signature && !verifySignature(header.alg, secret, input, signature)) {
-    throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
   }
 
   // Verify the payload
@@ -103,6 +99,7 @@ module.exports = function createVerifier(options) {
     algorithms: allowedAlgorithms,
     complete,
     encoding,
+    useWorkers,
     clockTimestamp,
     clockTolerance,
     ignoreExpiration,
@@ -176,16 +173,19 @@ module.exports = function createVerifier(options) {
 
   const decodeJwt = createDecoder({ complete: true, encoding })
 
+  // Workers support
+  useWorkers = useWorkers && supportsWorkers
+
   // Return the verifier
   return function verify(token, cb) {
-    const [callback, promise] = typeof secret === 'function' ? ensurePromiseCallback(cb) : []
+    const [callback, promise] = typeof secret === 'function' || useWorkers ? ensurePromiseCallback(cb) : []
 
     // As very first thing, decode the token - If invalid, everything else is useless
     const { header, payload, signature, input } = decodeJwt(token)
 
-    // We're get the secret synchronously
+    // We're getting the secret synchronously
     if (!callback) {
-      verifyToken(
+      verifyPayload(
         secret,
         input,
         header,
@@ -197,21 +197,22 @@ module.exports = function createVerifier(options) {
         clockTolerance
       )
 
+      // Verify the signature, if present
+      if (signature && !verifySignature(header.alg, secret, input, signature)) {
+        throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
+      }
+
       return complete ? { header, payload, signature } : payload
     }
 
     getAsyncSecret(secret, header, (err, currentSecret) => {
       if (err) {
-        return callback(
-          err instanceof TokenError
-            ? err
-            : new TokenError(TokenError.codes.secretFetchingError, 'Cannot fetch secret.', { originalError: err })
-        )
+        return callback(TokenError.wrap(err, TokenError.codes.secretFetchingError, 'Cannot fetch secret.'))
       }
 
       let verified
       try {
-        verifyToken(
+        verifyPayload(
           currentSecret,
           input,
           header,
@@ -222,6 +223,27 @@ module.exports = function createVerifier(options) {
           clockTimestamp,
           clockTolerance
         )
+
+        if (signature) {
+          if (useWorkers) {
+            verifySignatureWithWorker(header.alg, currentSecret, input, signature, (err, valid) => {
+              if (err) {
+                return callback(TokenError.wrap(err, TokenError.codes.workerError, 'Worker verification failed.'))
+              } else if (!valid) {
+                return callback(new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.'))
+              }
+
+              callback(null, complete ? { header, payload, signature } : payload)
+            })
+
+            return
+          }
+
+          // Verify the signature, if present
+          if (!verifySignature(header.alg, currentSecret, input, signature)) {
+            throw new TokenError(TokenError.codes.invalidSignature, 'The token signature is invalid.')
+          }
+        }
 
         verified = complete ? { header, payload, signature } : payload
       } catch (e) {

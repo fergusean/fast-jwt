@@ -18,6 +18,12 @@ function base64UrlDecode(base64url) {
 }
 
 function getAsyncSecret(handler, header, callback) {
+  // This can happen when secret is a value but useWorkers is true
+  if (typeof handler !== 'function') {
+    callback(null, handler)
+    return
+  }
+
   const rv = handler(header, callback)
 
   if (rv && typeof rv.then === 'function') {
