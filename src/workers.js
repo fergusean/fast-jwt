@@ -114,6 +114,10 @@ function stopWorkers(callback) {
 }
 
 function getAvailableWorker(callback, attempts = 3) {
+  if (!workers.length) {
+    return callback(null)
+  }
+
   const worker = availableWorkers.shift()
 
   if (!worker && attempts > 0 && workers.length) {
@@ -180,6 +184,7 @@ function handleWorker(parentPort, data) {
 
 function createSignatureWithWorker(algorithm, secret, header, payload, callback) {
   getAvailableWorker(workerIndex => {
+    console.log(workerIndex)
     // Could not get a worker within the reasonable timeout, perform the operation synchronously
     if (!workerIndex) {
       try {
