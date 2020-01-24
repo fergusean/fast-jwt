@@ -214,7 +214,7 @@ function createSignatureWithWorker(algorithm, secret, header, payload, callback)
 
       // In case of errors
       if (response < 0) {
-        callback(deserializeWorkerError(...data.map(d => d.toString('utf-8'))))
+        callback(deserializeWorkerError(...data.map(d => (d ? d.toString('utf-8') : null))))
         return
       }
 
@@ -257,7 +257,7 @@ function verifySignatureWithWorker(algorithm, secret, input, signature, callback
 
       // In case of errors
       if (response < 0) {
-        callback(deserializeWorkerError(...data.map(d => d.toString('utf-8'))))
+        callback(deserializeWorkerError(...data.map(d => (d ? d.toString('utf-8') : null))))
         return
       }
 
